@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideLocationMocks } from '@angular/common/testing';
+import { MOCK_PLATFORM_LOCATION_CONFIG, provideLocationMocks } from '@angular/common/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { provideQitsNavigationLinks, type QitsNavLink } from '@qits/ui-components';
@@ -58,18 +58,20 @@ describe('App', () => {
   });
 
   it('marks its own door — /events/ — as the current one', async () => {
-    // The layout reads the *document's* base URI, not the router, to decide which SPA it is; this
-    // app is served under `<base href="/events/">`, so the test document has to say the same.
-    document.head.appendChild(Object.assign(document.createElement('base'), { href: '/events/' }));
-    try {
-      const harness = await RouterTestingHarness.create('/');
+    // The layout reads its base href through Angular's `PlatformLocation`, not the document, to
+    // decide which SPA it is. Under `provideLocationMocks()` that is `MockPlatformLocation`, which
+    // answers from `MOCK_PLATFORM_LOCATION_CONFIG.appBaseHref` and never looks at a `<base>`
+    // element — so the app's `/events/` mount point is set there, not on the test document.
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MOCK_PLATFORM_LOCATION_CONFIG, useValue: { appBaseHref: '/events/' } },
+      ],
+    });
+    const harness = await RouterTestingHarness.create('/');
 
-      const layout = harness.routeNativeElement as HTMLElement;
-      const current = layout.querySelectorAll('.qits-layout-link[aria-current="page"]');
-      expect(current).toHaveLength(1);
-      expect(current[0].textContent?.trim()).toBe('Events');
-    } finally {
-      document.head.querySelector('base')?.remove();
-    }
+    const layout = harness.routeNativeElement as HTMLElement;
+    const current = layout.querySelectorAll('.qits-layout-link[aria-current="page"]');
+    expect(current).toHaveLength(1);
+    expect(current[0].textContent?.trim()).toBe('Events');
   });
 });
