@@ -1,6 +1,7 @@
 import { provideBrowserGlobalErrorListeners, type ApplicationConfig } from '@angular/core';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
+import { provideQitsBearerSignIn, qitsBearerInterceptor } from '@qits/angular';
 import {
   provideQitsBuilds,
   provideQitsNavigation,
@@ -11,17 +12,20 @@ import {
 import { routes } from './app.routes';
 
 /**
- * Seven providers, in the order every sibling repeats.
+ * Nine providers, in the order every sibling repeats.
  *
  * - `provideBrowserGlobalErrorListeners` funnels genuinely-global errors and unhandled rejections
  *   into Angular's `ErrorHandler`.
  * - `provideRouter` carries this app's state: the event is a path segment and the log's filters are
  *   query parameters, so the URL is what makes both bookmarkable.
- * - `withFetch` is not a preference. The default XHR backend is invisible to OTLP fetch
- *   instrumentation, so choosing it would quietly forfeit client spans the moment this deployment
- *   grows a telemetry relay. Every call this app makes is a same-origin path behind the edge and
- *   carries no credential at all — this service authenticates nothing by design, and the socket
- *   upgrade was measured answering `101` with none.
+ * - `provideQitsBearerSignIn({ clientId: 'qits-spa' })` signs this page in with the idp's public PKCE
+ *   client and puts `/auth/callback` in front of the app's own routes (epic qits-543). `withFetch`
+ *   is not a preference. The default XHR backend is invisible to OTLP fetch instrumentation, so
+ *   choosing it would quietly forfeit client spans the moment this deployment grows a telemetry
+ *   relay, and it is also what `qitsBearerInterceptor` needs to attach the bearer. Every call this
+ *   app makes is a same-origin path behind the edge — this service authenticates nothing of its
+ *   own, but every page signs in the same way, and the socket upgrade now offers the bearer as the
+ *   `qits.bearer` subprotocol rather than answering `101` with no credential at all.
  * - `provideQitsNavigation` is what puts links in the shared layout's sidebar. It issues one `GET
  *   /main-navigation` at startup and hands the answer to `QitsMainLayout`: the platform's door list
  *   is the edge's answer now, derived from the deployments it actually serves, rather than a list
@@ -43,7 +47,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withFetch()),
+    provideQitsBearerSignIn({ clientId: 'qits-spa' }),
+    provideHttpClient(withFetch(), withInterceptors([qitsBearerInterceptor])),
     provideQitsNavigation(),
     provideQitsProjects(),
     provideQitsScope('project'),

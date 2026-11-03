@@ -1,4 +1,5 @@
-import { InjectionToken } from '@angular/core';
+import { inject, InjectionToken } from '@angular/core';
+import { QITS_WEB_SOCKET } from '@qits/angular';
 
 /**
  * The part of `WebSocket` this application uses, named so a spec can hand over something else.
@@ -36,10 +37,14 @@ export type WebSocketFactory = (url: string) => WebSocketLike;
  * this screen — subscribe-on-open, invalidate-on-every-connect, insert-by-`occurredAt`,
  * dedup-by-id, reconnect — and none of it is reachable without driving `onopen`, `onmessage` and
  * `onclose` by hand.
+ *
+ * The default delegates to `@qits/angular`'s {@link QITS_WEB_SOCKET} (epic qits-543), which opens a
+ * `BearerWebSocket` offering the signed-in bearer as the `qits.bearer` subprotocol rather than the
+ * bare browser socket this app opened before it had a session to offer.
  */
 export const WEB_SOCKET_FACTORY = new InjectionToken<WebSocketFactory>('qits.web-socket', {
   providedIn: 'root',
-  factory: () => (url: string) => new WebSocket(url) as WebSocketLike,
+  factory: () => inject(QITS_WEB_SOCKET),
 });
 
 /**
