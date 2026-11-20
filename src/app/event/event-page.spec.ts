@@ -2,11 +2,26 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideLocationMocks } from '@angular/common/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, type Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { QitsMainLayout } from '@qits/ui-components';
 import type { EventDto } from '../api/dto';
-import { routes } from '../app.routes';
 import { DOWN_DEPTH_CAP } from './chain';
+import { EventPage } from './event-page';
+
+/**
+ * The event page on the bare address, without the hand-off in front of it.
+ *
+ * The application's own `events/:id` first asks whether the event can go to the landing app
+ * (`handOffEvent`, qits-2338), which reads the event and the project list before this page reads
+ * either — so through the real table every spec here would answer two event reads and see the page
+ * only on the hand-off's fallback. What reaches this page, and when, is `app.routes.spec.ts`'s
+ * question; this file's is what the page does once it is reached. Modelled on qits-ci-frontend's
+ * `run-page.spec.ts`, which carries the same `RunPage`/`handOffRun` split for the same reason.
+ */
+const routes: Routes = [
+  { path: '', component: QitsMainLayout, children: [{ path: 'events/:id', component: EventPage }] },
+];
 
 /**
  * The event page, one state at a time.
